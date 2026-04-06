@@ -8,24 +8,10 @@ import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart' as io;
 import 'package:shelf_router/shelf_router.dart';
 
-
-
-void main() async {
-  final dotenv = DotEnv()..load();
-  final dbUri = dotenv['MONGO_URI'];
-
-  if (dbUri == null) {
-    print('Error: MONGO_URI not found in .env file.');
-    return;
-  }
-
-  final db = await Db.create(dbUri);
-  await db.open();
+Handler createHandler(Db db) {
   final usersCollection = db.collection('users');
-
   final app = Router();
 
-  // Registration
   app.post('/register', (Request req) async {
     try {
       final payload = await req.readAsString();
@@ -41,7 +27,6 @@ void main() async {
             headers: {'Content-Type': 'application/json'});
       }
 
-      // Check if username or email already exists
       final existingUser = await usersCollection.findOne(
         where.eq('username', username).or(where.eq('email', email)),
       );
@@ -52,12 +37,13 @@ void main() async {
             headers: {'Content-Type': 'application/json'});
       }
 
-      // Hash password
       final hashedPassword = BCrypt.hashpw(password, BCrypt.gensalt());
 
-      // Create user
-      final newUser =
-          User(username: username, email: email, passwordHash: hashedPassword);
+      final newUser = User(
+        username: username,
+        email: email,
+        passwordHash: hashedPassword,
+      );
 
       await usersCollection.insertOne(newUser.toMap());
 
@@ -66,12 +52,27 @@ void main() async {
           headers: {'Content-Type': 'application/json'});
     } catch (e) {
       return Response(500,
-          body: jsonEncode({'error': 'Server error', 'details': e.toString()}),
+          body: jsonEncode({'error': 'Server error'}),
           headers: {'Content-Type': 'application/json'});
     }
   });
 
-  final handler = const Pipeline().addMiddleware(logRequests()).addHandler(app);
+  return const Pipeline().addMiddleware(logRequests()).addHandler(app);
+}
+
+void main() async {
+  final dotenv = DotEnv()..load();
+  final dbUri = dotenv['MONGO_URI'];
+
+  if (dbUri == null) {
+    print('Error: MONGO_URI not found in .env file.');
+    return;
+  }
+
+  final db = await Db.create(dbUri);
+  await db.open();
+
+  final handler = createHandler(db);
 
   final server = await io.serve(handler, '0.0.0.0', 8080);
   print('Server listening on port ${server.port}');

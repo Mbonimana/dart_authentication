@@ -28,7 +28,7 @@ jobs:
 
       # 4. Run tests
       - name: Run tests
-        run: dart test --coverage
+        run: dart test 
 
       # 5. Optional: show test summary
       - name: Show test results

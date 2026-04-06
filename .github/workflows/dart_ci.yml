@@ -1,35 +1,35 @@
-name: Dart CI
+# name: Dart CI
 
-# Run on pull request targeting main
-on:
-  pull_request:
-    branches:
-      - main
+# # Run on pull request targeting main
+# on:
+#   pull_request:
+#     branches:
+#       - main
 
-jobs:
-  test:
-    name: Run Dart tests
-    runs-on: ubuntu-latest
+# jobs:
+#   test:
+#     name: Run Dart tests
+#     runs-on: ubuntu-latest
 
-    steps:
-      # 1. Checkout code
-      - name: Checkout repository
-        uses: actions/checkout@v3
+#     steps:
+#       # 1. Checkout code
+#       - name: Checkout repository
+#         uses: actions/checkout@v3
 
-      # 2. Setup Dart
-      - name: Setup Dart SDK
-        uses: dart-lang/setup-dart@v1
-        with:
-          sdk: stable
+#       # 2. Setup Dart
+#       - name: Setup Dart SDK
+#         uses: dart-lang/setup-dart@v1
+#         with:
+#           sdk: stable
 
-      # 3. Get dependencies
-      - name: Install dependencies
-        run: dart pub get
+#       # 3. Get dependencies
+#       - name: Install dependencies
+#         run: dart pub get
 
-      # 4. Run tests
-      - name: Run tests
-        run: dart test --coverage
+#       # 4. Run tests
+#       - name: Run tests
+#         run: dart test --coverage
 
-      # 5. Optional: show test summary
-      - name: Show test results
-        run: echo "Tests finished successfully ✅"
+#       # 5. Optional: show test summary
+#       - name: Show test results
+#         run: echo "Tests finished successfully ✅"

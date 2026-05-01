@@ -14,7 +14,7 @@ void main() {
 
   test('addition', 
       () {
-    expect(2 + 6, 4);
+    expect(2 + 6, 8);
   } 
   );
 }

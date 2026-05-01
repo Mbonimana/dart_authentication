@@ -11,4 +11,10 @@ void main() {
     expect(data['username'], 'manasseh-test');
     expect(data['email'], 'test@test.com');
   });
+
+  test('addition', 
+      () {
+    expect(2 + 6, 4);
+  } 
+  );
 }

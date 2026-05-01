@@ -1,79 +1,57 @@
-import 'dart:convert';
+import 'dart:io';
 
-import 'package:bcrypt/bcrypt.dart';
-import 'package:dart_mongo_backend/models/user_model.dart';
-import 'package:dotenv/dotenv.dart';
-import 'package:mongo_dart/mongo_dart.dart';
+import 'package:dart_mongo_backend/config/env_config.dart';
+import 'package:dart_mongo_backend/db.dart';
+import 'package:dart_mongo_backend/routes/transaction_routes.dart';
 import 'package:shelf/shelf.dart';
-import 'package:shelf/shelf_io.dart' as io;
-import 'package:shelf_router/shelf_router.dart';
+import 'package:shelf/shelf_io.dart';
 
-Handler createHandler(Db db) {
-  final usersCollection = db.collection('users');
-  final app = Router();
+Future<void> main() async {
+  try {
+    EnvConfig.init();
+    await DB.init();
 
-  app.post('/register', (Request req) async {
-    try {
-      final payload = await req.readAsString();
-      final data = jsonDecode(payload);
+    final router = TransactionRoutes().router;
 
-      final username = data['username'];
-      final email = data['email'];
-      final password = data['password'];
+    final handler = Pipeline()
+        .addMiddleware(logRequests())
+        .addMiddleware(_corsMiddleware())
+        .addHandler(router);
 
-      if (username == null || email == null || password == null) {
-        return Response(400,
-            body: jsonEncode({'error': 'Missing required fields'}),
-            headers: {'Content-Type': 'application/json'});
-      }
+    // IMPORTANT: cloud-ready port
+    final port = int.parse(Platform.environment['PORT'] ?? '8080');
 
-      final existingUser = await usersCollection.findOne(
-        where.eq('username', username).or(where.eq('email', email)),
-      );
+    final server = await serve(
+      handler,
+      InternetAddress.anyIPv4,
+      port,
+    );
 
-      if (existingUser != null) {
-        return Response(409,
-            body: jsonEncode({'error': 'Username or email already exists'}),
-            headers: {'Content-Type': 'application/json'});
-      }
-
-      final hashedPassword = BCrypt.hashpw(password, BCrypt.gensalt());
-
-      final newUser = User(
-        username: username,
-        email: email,
-        passwordHash: hashedPassword,
-      );
-
-      await usersCollection.insertOne(newUser.toMap());
-
-      return Response(201,
-          body: jsonEncode({'status': 'User registered successfully'}),
-          headers: {'Content-Type': 'application/json'});
-    } catch (e) {
-      return Response(500,
-          body: jsonEncode({'error': 'Server error'}),
-          headers: {'Content-Type': 'application/json'});
-    }
-  });
-
-  return const Pipeline().addMiddleware(logRequests()).addHandler(app);
-}
-
-void main() async {
-  final dotenv = DotEnv()..load();
-  final dbUri = dotenv['MONGO_URI'];
-
-  if (dbUri == null) {
-    print('Error: MONGO_URI not found in .env file.');
-    return;
+    print("🚀 Server running on:");
+    print("   http://${server.address.address}:$port");
+    print("🔌 WebSocket:");
+    print("   ws://${server.address.address}:$port/ws");
+  } catch (e, stack) {
+    print("❌ Server failed: $e");
+    print(stack);
   }
-
-  final db = await Db.create(dbUri);
-  await db.open();
-
-  final handler = createHandler(db);
-
-  final server = await io.serve(handler, '0.0.0.0', 8080);
-  print('Server listening on port ${server.port}');
 }
+
+Middleware _corsMiddleware() {
+  return (Handler innerHandler) {
+    return (Request request) async {
+      if (request.method == 'OPTIONS') {
+        return Response.ok('', headers: _corsHeaders);
+      }
+
+      final response = await innerHandler(request);
+      return response.change(headers: _corsHeaders);
+    };
+  };
+}
+
+const _corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
+  'Access-Control-Allow-Headers': 'Origin, Content-Type',
+};

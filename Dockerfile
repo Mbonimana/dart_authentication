@@ -13,8 +13,10 @@ FROM debian:stable-slim
 
 WORKDIR /app
 
-COPY --from=build /app/server server
+COPY --from=build /app/server /app/server
 
-EXPOSE 8081
+RUN chmod +x /app/server
 
-CMD ["./server"]
+EXPOSE 8080
+
+CMD ["/app/server"]

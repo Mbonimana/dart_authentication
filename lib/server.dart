@@ -22,9 +22,7 @@ Future<void> main() async {
         .addHandler(router);
 
     // 4. Port (cloud + local safe)
-    final port =
-        int.tryParse(Platform.environment['PORT'] ?? '') ??
-        EnvConfig.port;
+    final port = int.parse(Platform.environment['PORT']!);
 
     // 5. Bind correctly (CRITICAL FIX)
     final server = await serve(

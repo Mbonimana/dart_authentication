@@ -5,7 +5,7 @@ import 'package:mongo_dart/mongo_dart.dart';
 class TransactionService {
   // CREATE TRANSACTION (DEVICE A)
   static Future<Map> create(String amount, String deviceA) async {
-    final id = DateTime.now().millisecondsSinceEpoch.toString();
+    final id = ObjectId();
 
     final txn = {
       "_id": id,
@@ -18,36 +18,57 @@ class TransactionService {
 
     await DB.transactions.insert(txn);
 
+    // Convert ObjectId for API friendliness (optional but recommended)
+    final responseTxn = Map<String, dynamic>.from(txn);
+    responseTxn["_id"] = id.toHexString();
+
     SocketManager.broadcast({
       "type": "TRANSACTION_CREATED",
-      "data": txn,
+      "data": responseTxn,
     });
 
-    return txn;
+    return responseTxn;
   }
 
   // PAY TRANSACTION (DEVICE B)
   static Future<Map?> pay(String txnId, String deviceB) async {
+    final oid = ObjectId.parse(txnId);
+
     await DB.transactions.update(
-      where.eq("_id", txnId),
+      where.eq("_id", oid),
       modify
           .set("status", "paid")
           .set("deviceB", deviceB)
           .set("paidAt", DateTime.now().toIso8601String()),
     );
 
-    final updated = await DB.transactions.findOne({"_id": txnId});
+    final updated = await DB.transactions.findOne({"_id": oid});
+
+    if (updated == null) {
+      return null;
+    }
+
+    final responseTxn = Map<String, dynamic>.from(updated);
+    responseTxn["_id"] = (responseTxn["_id"] as ObjectId).toHexString();
 
     SocketManager.broadcast({
       "type": "TRANSACTION_PAID",
-      "data": updated,
+      "data": responseTxn,
     });
 
-    return updated;
+    return responseTxn;
   }
 
   // GET ONE
   static Future<Map?> get(String id) async {
-    return await DB.transactions.findOne({"_id": id});
+    final txn = await DB.transactions.findOne({"_id": ObjectId.parse(id)});
+
+    if (txn == null) {
+      return null;
+    }
+
+    final responseTxn = Map<String, dynamic>.from(txn);
+    responseTxn["_id"] = (responseTxn["_id"] as ObjectId).toHexString();
+    return responseTxn;
   }
 }

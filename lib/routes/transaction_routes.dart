@@ -105,9 +105,8 @@ class TransactionRoutes {
       }
     });
 
-    router.get('/ping', (req) {
-      print("PING HIT");
-      return Response.ok("pong");
+    router.get('/ping', (Request req) {
+      return Response.ok('pong');
     });
 
     // GET
